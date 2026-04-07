@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String              @id @default(cuid())
+  email              String?             @unique
+  name               String?             @unique
+  password           String
+  employeeId         String?             @unique
+  avatar             String?
+  phoneNumber        String?
+  contactTelegram    String?
+  contactWhatsapp    String?
+  jobTitle           String?
+  department         String?
+  company            String?
+  supervisorName     String?
+  employmentType     String?
+  biography          String?             @db.Text
+  emailVerified      Boolean             @default(false)
+  role               String              @default("user")
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  lastLoginAt        DateTime?
+  ndtQualifications  NdtQualification[]
+  reportEdits        NdtReportEdit[]     @relation("reportEdits")
+  approvedReports    NdtReport[]         @relation("approvedReports")
+  createdReports     NdtReport[]         @relation("createdReports")
+  editedReports      NdtReport[]         @relation("editedReports")
+  verificationTokens VerificationToken[]
+  systemSettings     SystemSettings[]
+
+  @@map("users")
+}
+
+model VerificationToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  userId    String
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "verification_tokens_userId_fkey")
+  @@map("verification_tokens")
+}
+
+model NdtQualification {
+  id              String      @id @default(cuid())
+  userId          String
+  method          NdtMethod
+  level           NdtLevel
+  certNumber      String?
+  issuedAt        DateTime?
+  expiresAt       DateTime?
+  active          Boolean     @default(true)
+  metadata        String?     @db.LongText
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  approvedReports NdtReport[] @relation("approvedQualification")
+
+  @@index([userId, method])
+  @@map("ndt_qualifications")
+}
+
+model NdtReport {
+  id                          String            @id @default(cuid())
+  ndtReportNumber             String            @unique
+  workOrder                   String?
+  taskReference               String?
+  operator                    String?
+  aircraftRegistration        String?
+  aircraftType                String?
+  description                 String?           @db.Text
+  partNo                      String?
+  serialNo                    String?
+  quantity                    Int?
+  ndtMethod                   NdtMethod
+  ndtTechnicalRef             String?
+  taskDescriptions            String?           @db.Text
+  remarks                     String?           @db.Text
+  manhours                    Float?
+  location                    String?
+  drawingCanvas               String?           @db.LongText
+  signature                   String?           @db.LongText
+  stamp                       String?           @db.LongText
+  signatureDate               DateTime?
+  approvalStatus              ApprovalStatus    @default(PENDING)
+  approvedAt                  DateTime?
+  requiredQualificationMethod NdtMethod?
+  requiredQualificationLevel  NdtLevel?
+  createdById                 String
+  approvedById                String?
+  approvedQualificationId     String?
+  createdAt                   DateTime          @default(now())
+  updatedAt                   DateTime          @updatedAt
+  lastEditById                String?
+  edits                       NdtReportEdit[]
+  approvedBy                  User?             @relation("approvedReports", fields: [approvedById], references: [id], onDelete: Cascade)
+  approvedQualification       NdtQualification? @relation("approvedQualification", fields: [approvedQualificationId], references: [id])
+  createdBy                   User              @relation("createdReports", fields: [createdById], references: [id], onDelete: Cascade)
+  lastEditBy                  User?             @relation("editedReports", fields: [lastEditById], references: [id])
+
+  @@index([ndtMethod])
+  @@index([approvedById], map: "ndt_reports_approvedById_fkey")
+  @@index([approvedQualificationId], map: "ndt_reports_approvedQualificationId_fkey")
+  @@index([createdById], map: "ndt_reports_createdById_fkey")
+  @@index([lastEditById], map: "ndt_reports_lastEditById_fkey")
+  @@map("ndt_reports")
+}
+
+model NdtReportEdit {
+  id        String    @id @default(cuid())
+  reportId  String
+  editorId  String
+  changes   String?   @db.LongText
+  note      String?   @db.Text
+  createdAt DateTime  @default(now())
+  editor    User      @relation("reportEdits", fields: [editorId], references: [id], onDelete: Cascade)
+  report    NdtReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([editorId], map: "ndt_report_edits_editorId_fkey")
+  @@map("ndt_report_edits")
+}
+
+enum NdtMethod {
+  UT
+  RT
+  MT
+  PT
+  ET
+  LT
+}
+
+enum NdtLevel {
+  L1
+  L2
+  L3
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model SystemSettings {
+  id             String   @id @default(cuid())
+  key            String   @unique
+  value          String
+  description    String?
+  updatedById    String?
+  updatedAt      DateTime @default(now())
+  updatedBy      User?    @relation(fields: [updatedById], references: [id])
+
+  @@index([updatedById])
+  @@map("system_settings")
+}
+
