@@ -1,4 +1,4 @@
-export type Role = "admin" | "manager" | "user"
+export type Role = "admin" | "manager" | "customer" | "engineer" 
 
 export type User = {
     id: string
@@ -264,7 +264,7 @@ export type User = {
         email,
         username,
         password: params.password, // DEMO ONLY
-        role: username.toLowerCase().includes("admin") ? "admin" : "user",
+        role: username.toLowerCase().includes("admin") ? "admin" : "customer",
         avatar: "/default-avatar.png",
         twoFAEnabled: false,
         createdAt: now,

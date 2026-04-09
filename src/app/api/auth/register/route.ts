@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
       supervisorName,
       employmentType,
       biography,
+      role,
     } = await request.json()
 
     // if (!email || !password) {
@@ -111,7 +112,22 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await hashPassword(password)
 
     // Determine role based on username - if username contains "admin", set role to admin
-    const role = name.toLowerCase().includes("admin") ? "admin" : "user"
+    // const role = name.toLowerCase().includes("admin") ? "admin" : "user"
+
+    let roleToAssign = role || 'customer'; // default to 'customer' if no role provided
+    if (name.toLowerCase().includes('admin')) {
+      roleToAssign = 'admin';
+    } else {
+      if(!role) {
+        return NextResponse.json(
+          { error: 'Role is required for non-admin users' },
+          { status: 400 }
+        )
+       }
+      roleToAssign = role; 
+    }
+
+     
 
     const user = await prisma.user.create({
       data: {
@@ -127,7 +143,7 @@ export async function POST(request: NextRequest) {
         supervisorName: supervisorName || null,
         employmentType: employmentType || null,
         biography: biography || null,
-        role,
+        role: roleToAssign,
         // emailVerified: false,
         emailVerified: true, 
       },

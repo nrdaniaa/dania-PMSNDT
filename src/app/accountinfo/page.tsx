@@ -45,7 +45,7 @@ export default function AccountInfo() {
                         setUser({
                             id: apiUser.id,
                             username: apiUser.name ?? apiUser.email.split('@')[0],
-                            role: apiUser.role ?? 'user',
+                            role: apiUser.role ?? '',
                             email: apiUser.email,
                             avatar: apiUser.avatar,
                             employeeId: apiUser.employeeId ?? '',
@@ -73,7 +73,7 @@ export default function AccountInfo() {
             setUser(localUser ?? {
                 id: "guest",
                 username: "guest",
-                role: "user",
+                role: "customer",
                 email: "guest@example.com",
                 twoFAEnabled: false,
                 createdAt: new Date().toISOString(),
@@ -416,20 +416,20 @@ export default function AccountInfo() {
         return (
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon">
+                    <Button variant="outline" size="icon" className="cursor-pointer">
                         <Sun className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
                         <Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
-                        <span className="sr-only">Toggle theme</span>
+                        <span className="sr-only ">Toggle theme</span>
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setTheme("light")}>
+                    <DropdownMenuItem className="cursor-pointer" onClick={() => setTheme("light")} >
                         Light
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setTheme("dark")}>
+                    <DropdownMenuItem className="cursor-pointer" onClick={() => setTheme("dark")}>
                         Dark
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setTheme("system")}>
+                    <DropdownMenuItem className="cursor-pointer" onClick={() => setTheme("system")}>
                         System
                     </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -852,16 +852,16 @@ export default function AccountInfo() {
                                             
                                             <div className="grid gap-2">
                                                 
-                                                <Label htmlFor="sessionTimeout">Session Timeout (minutes)</Label>
-                                                <Input
-                                                    id="sessionTimeout"
-                                                    type="number"
-                                                    min="1"
-                                                    max="480"
-                                                    value={sessionTimeout}
-                                                    onChange={(e) => setSessionTimeout(parseInt(e.target.value) || 30)}
-                                                    placeholder="30"
-                                                />
+                                                <Label htmlFor="sessionTimeout">Session Timeout</Label>
+                                               <select id="sessionTimeout" value={sessionTimeout} onChange={(e) => setSessionTimeout(Number(e.target.value))} className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                                                    <option value={5}>5 minutes</option>
+                                                    <option value={10}>10 minutes</option>
+                                                    <option value={15}>15 minutes</option>
+                                                    <option value={30}>30 minutes</option>
+                                                    <option value={60}>1 hour</option>
+                                                    <option value={240}>4 hours</option>
+                                                    <option value={480}>8 hours</option>
+                                                </select>
                                                 <p className="text-sm text-muted-foreground">
                                                     How long before inactive sessions automatically log out users. Minimum 1 minute, maximum 8 hours.
                                                 </p>
@@ -895,7 +895,8 @@ export default function AccountInfo() {
                                             <ul className="list-disc pl-5 text-sm text-muted-foreground">
                                                 {role === "admin" && (<><li>Manage users & roles</li><li>Full system access</li></>)}
                                                 {role === "manager" && (<><li>Approve requests</li><li>Manage team data</li></>)}
-                                                {role === "engineer" && (<><li>Create & edit own records</li><li>View permitted resources</li></>)}
+                                                {role === "engineer" && (<><li>Create & edit own records</li><li>View permitted resources</li></>)} 
+                                                 {role === "customer" && (<><li>Create & edit own records</li><li>View permitted resources</li></>)} 
                                             </ul>
                                         </div>
                                     </CardContent>
@@ -1064,11 +1065,11 @@ export default function AccountInfo() {
                                         <CardTitle>Accessibility</CardTitle>
                                     </CardHeader>
                                     <CardContent className="grid gap-4">
-                                        <div className="flex items-center justify-between">
+                                        <div className="flex items-center justify-between ">
                                             <div>
                                                 <Label>Dark Mode</Label>
                                                 <p className="text-sm text-muted-foreground">
-                                                    Enable dark mode for better visibility in low-light environments.
+                                                    Enable dark mode for better visibility in low-light environments...
                                                 </p>
                                             </div>
                                             <ModeToggle />

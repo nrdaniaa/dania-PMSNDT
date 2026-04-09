@@ -21,14 +21,14 @@
 //   })
 //   return res.json()
 // }
-export async function registerApi( username: string, password: string, additionalData?: { employeeId?: string, jobTitle?: string, department?: string, company?: string }) {
+export async function registerApi( username: string, password: string, role: string, additionalData?: { employeeId?: string, jobTitle?: string, department?: string, company?: string }) {
   const res = await fetch('/api/auth/register', { 
     method: 'POST', 
     headers: { 'content-type': 'application/json' }, 
     body: JSON.stringify({ 
-     
       name: username, 
       password,
+      role,
       ...additionalData
     }) 
   })

@@ -67,7 +67,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Only allow specific roles
-    if (!['admin', 'manager', 'user', 'technician', 'engineer'].includes(role)) {
+    if (!['admin', 'manager', 'user', 'engineer', 'customer'].includes(role)) {
       return NextResponse.json(
         { error: 'Invalid role' },
         { status: 400 }

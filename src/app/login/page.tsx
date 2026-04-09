@@ -36,6 +36,7 @@ import { useEffect, useState } from "react"
     const [regConfirm, setRegConfirm] = useState("")
     const [showRegisterPassword, setShowRegisterPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+    const [regRole, setRegRole] = useState("")
 
     const [success, setSuccess] = useState("")
     const [activeTab, setActiveTab] = useState("login")
@@ -98,25 +99,34 @@ import { useEffect, useState } from "react"
     // }
     const handleRegister = async () => {
         try {
-        if (!regUsername.trim()) return alert("Please enter a username.")
-        if (regPassword.length < 8) return alert("Password must be at least 8 characters.")
-        if (regPassword !== regConfirm) return alert("Passwords do not match.")     
-            
-        const r = await registerApi( regUsername.trim(), regPassword)
-        if (r?.ok) {
-            // alert('Registered! You can now log in.') 
+          if (!regUsername.trim()) return alert("Please enter a username.")
+          if (regPassword.length < 8) return alert("Password must be at least 8 characters.")
+          if (regPassword !== regConfirm) return alert("Passwords do not match.")  
+          if (!regRole) return alert("Please select a role.")  
+      
+          if (regUsername.trim().toLowerCase().includes("admin") && regRole !== "admin") {
+            return alert("Registration failed")
+          }
+      
+          if (!regUsername.trim().toLowerCase().includes("admin") && regRole === "admin") {
+            return alert("Registration failed")
+          }
+      
+          const finalRole = regUsername.trim().toLowerCase().includes("admin") ? "admin" : regRole
+      
+          const r = await registerApi(regUsername.trim(), regPassword, finalRole)
+      
+          if (r?.ok) {
             setSuccess("Registered! Switching to login...")
-
-            setTimeout(() => {
-              setActiveTab("login")
-            }, 1000)
-        } else {
+            setTimeout(() => setActiveTab("login"), 1000)
+          } else {
             alert(r?.error || 'Registration failed')
-        }
+          }
+      
         } catch (err: any) {
-        alert(err?.message || "Registration failed.")
+          alert(err?.message || "Registration failed.")
         }
-    }
+      }
 
 
     return (
@@ -292,6 +302,22 @@ import { useEffect, useState } from "react"
                         </button>
                     </div>
                     </div>
+                    <div className="grid gap-3">
+                        <Label htmlFor="role">Role</Label>
+                        <select
+                            id="role"
+                            className="border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border bg-transparent py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            value={regRole}
+                            onChange={(e) => setRegRole(e.target.value)}
+                        >
+                            <option value="">Select a role</option>
+                            <option value="manager">Manager</option>
+                            <option value="engineer">Engineer</option>
+                            <option value="customer">Customer</option>
+                            <option value="admin">Admin</option>
+
+                        </select>
+                    </div>
                 </CardContent>
 
                 <CardFooter className="flex gap-3">
@@ -304,6 +330,7 @@ import { useEffect, useState } from "react"
                         setRegUsername("")
                         setRegPassword("")
                         setRegConfirm("")
+                        setRegRole("")
                     }}
                     >
                     Reset
