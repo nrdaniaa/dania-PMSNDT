@@ -57,8 +57,10 @@ model NdtQualification {
   method          NdtMethod
   level           NdtLevel
   certNumber      String?
+  approvalNo      String?
   issuedAt        DateTime?
   expiresAt       DateTime?
+  renewDate       DateTime?
   active          Boolean     @default(true)
   metadata        String?     @db.LongText
   createdAt       DateTime    @default(now())

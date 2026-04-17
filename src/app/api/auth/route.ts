@@ -36,6 +36,7 @@ export async function POST(request: Request) {
           email,
           name: username || email.split('@')[0],
           password: hashedPassword,
+          role: 'customer',
           emailVerified: false,
         },
       })

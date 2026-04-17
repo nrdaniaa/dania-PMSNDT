@@ -306,7 +306,7 @@ import { useEffect, useState } from "react"
                         <Label htmlFor="role">Role</Label>
                         <select
                             id="role"
-                            className="border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border bg-transparent py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border bg-transparent py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-300 hover:text-gray-700 bg-white dark:bg-[#1b1b1b]"
                             value={regRole}
                             onChange={(e) => setRegRole(e.target.value)}
                         >

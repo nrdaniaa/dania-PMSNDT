@@ -62,7 +62,7 @@ import { useEffect, useState } from "react"
                     id: 'prop',
                     email: userProp.email,
                     username: userProp.name,
-                    role: 'user',
+                    role: 'customer',
                     avatar: userProp.avatar,
                     twoFAEnabled: false,
                 })

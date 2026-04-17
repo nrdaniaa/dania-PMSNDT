@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { loadUser, saveUser, User } from "@/lib/auth-storage"
 import { Eye, EyeOff, RefreshCw, Upload, User as UserIcon } from "lucide-react"
 import { useEffect, useState } from "react"
@@ -29,6 +30,14 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+
+import {
+    Select,
+    SelectTrigger,
+    SelectValue,
+    SelectContent,
+    SelectItem,
+} from "@/components/ui/select";
 
 export default function AccountInfo() {
     // ---- Load user from localStorage (set by Login/Register) ----
@@ -122,6 +131,41 @@ export default function AccountInfo() {
     const [contactWhatsapp, setContactWhatsapp] = useState("")
     const [twoFAEnabled, setTwoFAEnabled] = useState(false)
 
+    //NDT status
+    const [certifications, setCertifications] = useState<Array<{
+        id?: string
+        method: string
+        level: string
+        certNumber?: string
+        approvalNo?: string
+        expiresAt?: string
+        renewDate?: string
+        active?: boolean
+        createdAt?: string
+    }>>([])
+
+    // Add certification form state
+    const [addCertNumber, setAddCertNumber] = useState("")
+    const [addApprovalNo, setAddApprovalNo] = useState("")
+    const [addExpiresAt, setAddExpiresAt] = useState("")
+    const [addRenewDate, setAddRenewDate] = useState("")
+    const [addMethod, setAddMethod] = useState("")
+    const [addLevel, setAddLevel] = useState("")
+
+    // Edit certification form state
+    const [editCertNumber, setEditCertNumber] = useState("")
+    const [editApprovalNo, setEditApprovalNo] = useState("")
+    const [editExpiresAt, setEditExpiresAt] = useState("")
+    const [editRenewDate, setEditRenewDate] = useState("")
+    const [editMethod, setEditMethod] = useState("")
+    const [editLevel, setEditLevel] = useState("")
+
+    const [loadingQualifications, setLoadingQualifications] = useState(false)
+    const [editingCertId, setEditingCertId] = useState<string | null>(null)
+
+
+
+
     // Session timeout state (admin only)
     const [sessionTimeout, setSessionTimeout] = useState(30) // minutes
     const [loadingSessionTimeout, setLoadingSessionTimeout] = useState(false)
@@ -176,6 +220,26 @@ export default function AccountInfo() {
             loadSessionSettings()
         }
     }, [user?.role])
+
+    // Load NDT qualifications
+    useEffect(() => {
+        const loadQualifications = async () => {
+            if (!user) return
+            setLoadingQualifications(true)
+            try {
+                const response = await fetch('/api/auth/ndt-qualifications')
+                if (response.ok) {
+                    const data = await response.json()
+                    setCertifications(data.qualifications || [])
+                }
+            } catch (error) {
+                console.warn('Could not load NDT qualifications.', error)
+            } finally {
+                setLoadingQualifications(false)
+            }
+        }
+        loadQualifications()
+    }, [user?.id])
 
     const resetAlerts = () => { setMessage(null); setError(null) }
 
@@ -409,6 +473,170 @@ export default function AccountInfo() {
             setLoadingRoleUpdate(false)
         }
     }
+
+    // NDT Certification Handlers
+    const handleAddCertification = async () => {
+        if (!addMethod || !addLevel) return setError("Method and level are required.")
+        resetAlerts()
+        setLoadingQualifications(true)
+        try {
+            const response = await fetch('/api/auth/ndt-qualifications', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    method: addMethod,
+                    level: addLevel,
+                    certNumber: addCertNumber || null,
+                    approvalNo: addApprovalNo || null,
+                    expiresAt: addExpiresAt || null,
+                    renewDate: addRenewDate || null,
+
+                }),
+            })
+
+            if (!response.ok) {
+                const errorData = await response.json()
+                throw new Error(errorData.error || 'Failed to add certification')
+            }
+
+            const data = await response.json()
+            setCertifications(prev => [data.qualification, ...prev])
+            setAddMethod("")
+            setAddLevel("")
+            setAddCertNumber("")
+            setAddApprovalNo("")
+            setAddExpiresAt("")
+            setAddRenewDate("")
+            setMessage("Certification added successfully.")
+        } catch (e: any) {
+            setError(e?.message || "Failed to add certification.")
+        } finally {
+            setLoadingQualifications(false)
+        }
+    }
+
+    const handleEditCertification = (cert: typeof certifications[0]) => {
+        if (!cert.id) return setError("Certification ID not found.")
+        setEditingCertId(cert.id)
+        // Store original values for editing in separate edit form state
+        setEditMethod(cert.method)
+        setEditLevel(cert.level)
+        setEditCertNumber(cert.certNumber || "")
+        setEditApprovalNo(cert.approvalNo || "")
+        setEditExpiresAt(cert.expiresAt || "")
+        setEditRenewDate(cert.renewDate || "")
+    }
+
+    const handleCancelEdit = () => {
+        setEditingCertId(null)
+        setEditMethod("")
+        setEditLevel("")
+        setEditCertNumber("")
+        setEditApprovalNo("")
+        setEditExpiresAt("")
+        setEditRenewDate("")
+    }
+    {
+        certifications.map((cert) => {
+            const isActive = cert.expiresAt
+                ? new Date(cert.expiresAt) > new Date()
+                : false;
+
+            return (
+                <>
+                    {isActive ? (
+                        <Badge className="bg-transparent text-green-600 border border-green-500">
+                            Active
+                        </Badge>
+                    ) : (
+                        <Badge className="bg-transparent text-red-600 border border-red-500">
+                            Expired
+                        </Badge>
+                    )}
+                </>
+            );
+        })
+    }
+
+    const handleUpdateCertification = async (id: string, updates: Partial<{
+        method: string
+        level: string
+        certNumber: string
+        approvalNo: string
+        expiresAt: string
+        renewDate: string
+        active: boolean
+    }>) => {
+        if (!id) return
+        resetAlerts()
+        setLoadingQualifications(true)
+        try {
+            const response = await fetch('/api/auth/ndt-qualifications', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    id,
+                    ...updates,
+                }),
+            })
+
+            if (!response.ok) {
+                const errorData = await response.json()
+                throw new Error(errorData.error || 'Failed to update certification')
+            }
+
+            const data = await response.json()
+            setCertifications(prev => prev.map(cert =>
+                cert.id === id ? { ...cert, ...data.qualification } : cert
+
+            ))
+            setEditingCertId(null)
+            setEditMethod("")
+            setEditLevel("")
+            setEditCertNumber("")
+            setEditApprovalNo("")
+            setEditExpiresAt("")
+            setEditRenewDate("")
+            setMessage("Certification updated successfully.")
+        } catch (e: any) {
+            setError(e?.message || "Failed to update certification.")
+        } finally {
+            setLoadingQualifications(false)
+        }
+    }
+
+    const handleDeleteCertification = async (id: string) => {
+        if (!id) return
+        if (!confirm("Are you sure you want to delete this certification?")) return
+        resetAlerts()
+        setLoadingQualifications(true)
+        try {
+            const response = await fetch('/api/auth/ndt-qualifications', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id }),
+            })
+
+            if (!response.ok) {
+                const errorData = await response.json()
+                throw new Error(errorData.error || 'Failed to delete certification')
+            }
+
+            setCertifications(prev => prev.filter(cert => cert.id !== id))
+            setMessage("Certification deleted successfully.")
+        } catch (e: any) {
+            setError(e?.message || "Failed to delete certification.")
+        } finally {
+            setLoadingQualifications(false)
+        }
+    }
+
 
     // Mode Toggle Component
     function ModeToggle() {
@@ -812,7 +1040,7 @@ export default function AccountInfo() {
                                                 <Switch checked={twoFAEnabled} onCheckedChange={setTwoFAEnabled} />
                                             </div>
 
-                                           
+
                                             <Separator />
 
                                             <div className="grid gap-1">
@@ -833,7 +1061,7 @@ export default function AccountInfo() {
                                                     {loadingSecurity ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
                                                     Save Security
                                                 </Button>
-                                               
+
                                                 <Button variant="outline" type="button" onClick={() => setTwoFAEnabled(user?.twoFAEnabled ?? false)}>
                                                     Reset
                                                 </Button>
@@ -842,39 +1070,39 @@ export default function AccountInfo() {
                                     </Card>
                                     {/* Session Timeout - Admin only */}
                                     {user?.role === 'admin' && (
-                                    <Card>
-                                        <CardHeader>
-                                            
-                                            <CardTitle>Session Timeout</CardTitle>
-                                            <CardDescription>Manage your session timeout settings.</CardDescription>
-                                        </CardHeader>
-                                        <CardContent className="grid gap-4">
-                                            
-                                            <div className="grid gap-2">
-                                                
-                                                <Label htmlFor="sessionTimeout">Session Timeout</Label>
-                                               <select id="sessionTimeout" value={sessionTimeout} onChange={(e) => setSessionTimeout(Number(e.target.value))} className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                                                    <option value={5}>5 minutes</option>
-                                                    <option value={10}>10 minutes</option>
-                                                    <option value={15}>15 minutes</option>
-                                                    <option value={30}>30 minutes</option>
-                                                    <option value={60}>1 hour</option>
-                                                    <option value={240}>4 hours</option>
-                                                    <option value={480}>8 hours</option>
-                                                </select>
-                                                <p className="text-sm text-muted-foreground">
-                                                    How long before inactive sessions automatically log out users. Minimum 1 minute, maximum 8 hours.
-                                                </p>
-                                            </div>
-                                            <div className="flex gap-3">
-                                                <Button disabled={loadingSessionTimeout} onClick={handleSessionTimeoutUpdate}>
+                                        <Card>
+                                            <CardHeader>
+
+                                                <CardTitle>Session Timeout</CardTitle>
+                                                <CardDescription>Manage your session timeout settings.</CardDescription>
+                                            </CardHeader>
+                                            <CardContent className="grid gap-4">
+
+                                                <div className="grid gap-2">
+
+                                                    <Label htmlFor="sessionTimeout">Session Timeout</Label>
+                                                    <select id="sessionTimeout" value={sessionTimeout} onChange={(e) => setSessionTimeout(Number(e.target.value))} className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                                                        <option value={5}>5 minutes</option>
+                                                        <option value={10}>10 minutes</option>
+                                                        <option value={15}>15 minutes</option>
+                                                        <option value={30}>30 minutes</option>
+                                                        <option value={60}>1 hour</option>
+                                                        <option value={240}>4 hours</option>
+                                                        <option value={480}>8 hours</option>
+                                                    </select>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        How long before inactive sessions automatically log out users. Minimum 1 minute, maximum 8 hours.
+                                                    </p>
+                                                </div>
+                                                <div className="flex gap-3">
+                                                    <Button disabled={loadingSessionTimeout} onClick={handleSessionTimeoutUpdate}>
                                                         {loadingSessionTimeout ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
                                                         Update Timeout
                                                     </Button>
                                                 </div>
-                                        </CardContent>
-                                    </Card>
-                                       )}
+                                            </CardContent>
+                                        </Card>
+                                    )}
                                 </div>
                             </TabsContent>
 
@@ -895,13 +1123,334 @@ export default function AccountInfo() {
                                             <ul className="list-disc pl-5 text-sm text-muted-foreground">
                                                 {role === "admin" && (<><li>Manage users & roles</li><li>Full system access</li></>)}
                                                 {role === "manager" && (<><li>Approve requests</li><li>Manage team data</li></>)}
-                                                {role === "engineer" && (<><li>Create & edit own records</li><li>View permitted resources</li></>)} 
-                                                 {role === "customer" && (<><li>Create & edit own records</li><li>View permitted resources</li></>)} 
+                                                {role === "engineer" && (<><li>Create & edit own records</li><li>View permitted resources</li></>)}
+                                                {role === "customer" && (<><li>Create & edit own records</li><li>View permitted resources</li></>)}
                                             </ul>
                                         </div>
                                     </CardContent>
                                 </Card>
 
+                                {/* For manager and engineer */}
+                                {role !== "admin" && role !== "customer" && (
+                                    <Card className="mt-6">
+                                        <CardHeader>
+                                            <CardTitle>NDT Certification Status</CardTitle>
+                                            <CardDescription>Manage your NDT certifications and qualifications.</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="grid gap-6">
+                                            {/* Add New Certification */}
+                                            <div className="rounded-md border p-4">
+                                                <h4 className="mb-3 text-sm font-medium">Add New Certification</h4>
+                                                <div className="grid gap-4 md:grid-cols-2">
+                                                    <div className="grid gap-2">
+                                                        <Label htmlFor="add-method">Method</Label>
+                                                        <Select
+                                                            value={addMethod}
+                                                            onValueChange={(value) => {
+                                                                setAddMethod(value)
+                                                                setAddLevel("")
+                                                            }}
+                                                        >
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Select method" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="UT">UT</SelectItem>
+                                                                <SelectItem value="RT">RT</SelectItem>
+                                                                <SelectItem value="MT">MT</SelectItem>
+                                                                <SelectItem value="PT">PT</SelectItem>
+                                                                <SelectItem value="ET">ET</SelectItem>
+                                                                <SelectItem value="LT">LT</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                    <div className="grid gap-2">
+                                                        <Label htmlFor="add-level">Level</Label>
+                                                        <Select
+                                                            value={addLevel}
+                                                            onValueChange={setAddLevel}
+                                                            disabled={!addMethod}
+                                                        >
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Select level" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="L1">Level 1</SelectItem>
+                                                                <SelectItem value="L2">Level 2</SelectItem>
+                                                                <SelectItem value="L3">Level 3</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                </div>
+                                                <div className="grid gap-4 md:grid-cols-2 mt-4">
+                                                    <div className="grid gap-2">
+                                                        <Label htmlFor="certNumber">Certification </Label>
+                                                        <Input
+                                                            id="certNumber"
+                                                            placeholder="Enter your certification"
+                                                            value={addCertNumber}
+                                                            onChange={(e) => setAddCertNumber(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="grid gap-2">
+                                                        <Label htmlFor="certNumber">Approval No. </Label>
+                                                        <Input
+                                                            id="approvalNo"
+                                                            placeholder="Enter your approval number"
+                                                            value={addApprovalNo}
+                                                            disabled={!addMethod || addLevel === "L1"}
+                                                            onChange={(e) => setAddApprovalNo(e.target.value)}
+                                                        />
+                                                    </div>
+
+
+                                                </div>
+                                                <div className="grid gap-4 md:grid-cols-2 mt-4">
+                                                    <div className="grid gap-2">
+                                                        <Label htmlFor="expiresAt">Expiration Date</Label>
+                                                        <Input
+                                                            id="expiresAt"
+                                                            type="date"
+                                                            value={addExpiresAt}
+                                                            onChange={(e) => setAddExpiresAt(e.target.value)}
+                                                        />
+
+                                                    </div>
+                                                    <div className="grid gap-2">
+                                                        <Label htmlFor="renewDate">Renew Date</Label>
+                                                        <Input
+                                                            id="renewDate"
+                                                            type="date"
+                                                            value={addRenewDate}
+                                                            onChange={(e) => setAddRenewDate(e.target.value)}
+                                                        />
+                                                    </div>
+
+                                                </div>
+                                                <div className="flex gap-3 mt-4">
+                                                    <Button
+                                                        disabled={!addMethod || !addLevel || loadingQualifications}
+                                                        onClick={handleAddCertification}
+                                                    >
+                                                        {loadingQualifications ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                                        Add Certification
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        onClick={() => {
+                                                            setAddMethod("")
+                                                            setAddLevel("")
+                                                            setAddCertNumber("")
+                                                            setAddApprovalNo("")
+                                                            setAddExpiresAt("")
+                                                            setAddRenewDate("")
+
+                                                        }}
+                                                    >
+                                                        Reset
+                                                    </Button>
+                                                </div>
+                                            </div>
+
+                                            {/* Existing Certifications */}
+                                            <div className="grid gap-4">
+                                                <h4 className="text-sm font-medium">Your Certifications</h4>
+                                                {loadingQualifications && certifications.length === 0 ? (
+                                                    <p className="text-sm text-muted-foreground">Loading certifications...</p>
+                                                ) : certifications.length === 0 ? (
+                                                    <p className="text-sm text-muted-foreground">No certifications found.</p>
+                                                ) : (
+                                                    <div className="grid gap-3">
+                                                        {certifications.map((cert) => (
+                                                            <div key={cert.id} className="rounded-md border p-4">
+                                                                {editingCertId === cert.id ? (
+                                                                    <>
+                                                                        {/* Edit Mode */}
+                                                                        <div className="flex items-center gap-2 mb-4">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="text-sm">Method:</span>
+                                                                                <Badge variant="outline">
+                                                                                    {editMethod}
+                                                                                </Badge>
+                                                                            </div>
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="text-sm">Level:</span>
+                                                                                <Select
+                                                                                    value={editLevel}
+                                                                                    onValueChange={setEditLevel}
+                                                                                    disabled={!editMethod}
+                                                                                >
+                                                                                    <SelectTrigger>
+                                                                                        <SelectValue placeholder="Select level" />
+                                                                                    </SelectTrigger>
+                                                                                    <SelectContent>
+                                                                                        <SelectItem value="L1">Level 1</SelectItem>
+                                                                                        <SelectItem value="L2">Level 2</SelectItem>
+                                                                                        <SelectItem value="L3">Level 3</SelectItem>
+                                                                                    </SelectContent>
+                                                                                </Select>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="grid gap-4 md:grid-cols-2 mb-4">
+                                                                            <div className="grid gap-2">
+                                                                                <Label>Certification Number:</Label>
+                                                                                <span className="text-sm ">{editCertNumber}</span>
+                                                                            </div>
+                                                                            <div className="grid gap-2">
+                                                                                <Label htmlFor={`approvalNo-${cert.id}`}>Approval Number:</Label>
+                                                                                <Input
+                                                                                    id={`approvalNo-${cert.id}`}
+                                                                                    placeholder="Enter your approval Number"
+                                                                                    value={editApprovalNo}
+                                                                                    disabled={!editMethod || editLevel === "L1"}
+                                                                                    onChange={(e) => setEditApprovalNo(e.target.value)}
+                                                                                />
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="grid gap-4 md:grid-cols-2 mb-4">
+                                                                            <div className="grid gap-2">
+                                                                                <Label htmlFor={`expiresAt-${cert.id}`}>Expiration Date:</Label>
+                                                                                <Input
+                                                                                    id={`expiresAt-${cert.id}`}
+                                                                                    type="date"
+                                                                                    value={editExpiresAt}
+                                                                                    onChange={(e) => setEditExpiresAt(e.target.value)}
+                                                                                />
+                                                                            </div>
+                                                                            <div className="grid gap-2">
+                                                                                <Label htmlFor={`renewDate-${cert.id}`}>Renew Date:</Label>
+                                                                                <Input
+                                                                                    id={`renewDate-${cert.id}`}
+                                                                                    type="date"
+                                                                                    value={editRenewDate}
+                                                                                    onChange={(e) => setEditRenewDate(e.target.value)}
+                                                                                />
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="flex gap-2">
+                                                                            <Button
+                                                                                variant="outline"
+                                                                                size="sm"
+                                                                                onClick={handleCancelEdit}
+                                                                            >
+                                                                                Cancel
+                                                                            </Button>
+                                                                            <Button
+                                                                                variant="default"
+                                                                                size="sm"
+                                                                                onClick={() => handleUpdateCertification(cert.id!, {
+                                                                                    method: editMethod,
+                                                                                    level: editLevel,
+                                                                                    certNumber: editCertNumber ?? undefined,
+                                                                                    approvalNo: editApprovalNo ?? undefined,
+                                                                                    expiresAt: editExpiresAt ?? undefined,
+                                                                                    renewDate: editRenewDate ?? undefined
+                                                                                })}
+                                                                            >
+                                                                                {loadingQualifications ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                                                                Save
+                                                                            </Button>
+                                                                        </div>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        {/* View Mode */}
+                                                                        <div className="flex items-center justify-between">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="text-sm">Method:</span>
+                                                                                <Badge variant="outline">
+                                                                                    {cert.method}
+                                                                                </Badge>
+                                                                                <span className="text-sm">Level:</span>
+
+                                                                                <Badge variant="outline">
+                                                                                    {cert.level}
+                                                                                </Badge>
+                                                                                {cert.expiresAt && new Date(cert.expiresAt) > new Date() ? (
+                                                                                    <Badge className="bg-transparent text-green-600 border border-green-500 hover:bg-green-100 dark:bg-green-500 dark:text-white dark:hover:bg-green-600">
+                                                                                        Active
+                                                                                    </Badge>
+                                                                                ) : (
+                                                                                    <Badge className="bg-transparent text-red-600 border border-red-500 hover:bg-red-100 dark:bg-red-500 dark:text-white dark:hover:bg-red-600">
+                                                                                        Expired
+                                                                                    </Badge>
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="flex gap-2">
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="icon"
+                                                                                    className="h-8 w-8"
+                                                                                    onClick={() => handleEditCertification(cert)}
+                                                                                >
+                                                                                    <span className="sr-only">Edit</span>
+                                                                                    <svg
+                                                                                        xmlns="http://www.w3.org/2000/svg"
+                                                                                        width="16"
+                                                                                        height="16"
+                                                                                        viewBox="0 0 24 24"
+                                                                                        fill="none"
+                                                                                        stroke="currentColor"
+                                                                                        strokeWidth="2"
+                                                                                        strokeLinecap="round"
+                                                                                        strokeLinejoin="round"
+                                                                                    >
+                                                                                        <path d="M12 20h9" />
+                                                                                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                                                                                    </svg>
+                                                                                </Button>
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="icon"
+                                                                                    className="h-8 w-8 text-destructive"
+                                                                                    onClick={() => cert.id && handleDeleteCertification(cert.id)}
+                                                                                >
+                                                                                    <span className="sr-only">Delete</span>
+                                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                                        <path d="M3 6h18" />
+                                                                                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                                                                                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                                                                    </svg>
+                                                                                </Button>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="grid gap-2 mt-3">
+                                                                            {cert.certNumber && (
+                                                                                <div className="flex gap-2">
+                                                                                    <Label className="w-24 text-xs text-muted-foreground">Cert Number:</Label>
+                                                                                    <span className="text-sm">{cert.certNumber}</span>
+                                                                                </div>
+                                                                            )}
+                                                                            {cert.approvalNo && (
+                                                                                <div className="flex gap-2">
+                                                                                    <Label className="w-24 text-xs text-muted-foreground">Approval No:</Label>
+                                                                                    <span className="text-sm">{cert.approvalNo}</span>
+                                                                                </div>
+                                                                            )}
+                                                                            {cert.expiresAt && (
+                                                                                <div className="flex gap-2">
+                                                                                    <Label className="w-24 text-xs text-muted-foreground">Expires:</Label>
+                                                                                    <span className="text-sm">{new Date(cert.expiresAt).toLocaleDateString()}</span>
+                                                                                </div>
+                                                                            )}
+                                                                            {cert.renewDate && (
+                                                                                <div className="flex gap-2">
+                                                                                    <Label className="w-24 text-xs text-muted-foreground">Renew Date:</Label>
+                                                                                    <span className="text-sm">{new Date(cert.renewDate).toLocaleDateString()}</span>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )}
                                 {/* USER ROLE MANAGEMENT - Only show for admin */}
                                 {role === "admin" && (
                                     <Card className="mt-6">

@@ -123,12 +123,12 @@ import { useState } from "react"
             <TimeDate />
             </header>
 
-            <main className="p-6">
+            <main className="p-6 ">
             <h1 className="text-2xl font-bold text-center mb-8">New NDT Inspection Form</h1>
 
             <form
                 onSubmit={handleSubmit}
-                className="mx-auto max-w-4xl rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm"
+                className="mx-auto max-w-4xl rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm "
             >
                 <h2 className="text-lg font-semibold text-neutral-800 text-center">NDT Inspection Form</h2>
                 <hr className="my-4 border-neutral-300" />
